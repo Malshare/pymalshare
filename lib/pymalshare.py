@@ -28,7 +28,8 @@ class MalShare(object):
                 host=malshare_db_host,
                 user=os.getenv("MALSHARE_DB_USER"),
                 password=os.getenv("MALSHARE_DB_PASS"),
-                db=malshare_db)
+                db=malshare_db,
+            )
             sql_con.autocommit(True)
             return sql_con
         except Exception as e:
@@ -78,23 +79,23 @@ class MalShare(object):
         insert_sql = """UPDATE tbl_samples set ssdeep = %s, ftype = %s, yara = %s, pending=0 WHERE id = %s"""
         sql_cur = self.sql_con.cursor()
         sql_cur.execute(insert_sql, (r_ssdeep, r_type, json.dumps(r_yara), r_id))
-        self.db_submit_yara(r_id, r_yara.get('yara', []))
+        self.db_submit_yara(r_id, r_yara.get("yara", []))
         return r_id
 
     def db_submit_yara(self, sample_id, yara_rule_names):
         for rule_name in yara_rule_names:
             yara_id = self.db_ensure_yara_rule_name(rule_name)
-            sql = 'SELECT id FROM tbl_matches WHERE (yara_id = %s) AND (sample_id = %s)'
+            sql = "SELECT id FROM tbl_matches WHERE (yara_id = %s) AND (sample_id = %s)"
             cur = self.sql_con.cursor()
             cur.execute(sql, (yara_id, sample_id))
             row = cur.fetchone()
             if row is None:
-                sql = 'INSERT INTO tbl_matches (yara_id, sample_id) VALUES(%s, %s)'
+                sql = "INSERT INTO tbl_matches (yara_id, sample_id) VALUES(%s, %s)"
                 cur = self.sql_con.cursor()
                 cur.execute(sql, (yara_id, sample_id))
 
     def db_ensure_yara_rule_name(self, rule_name):
-        sql = 'SELECT id FROM tbl_yara WHERE (rule_name = %s)'
+        sql = "SELECT id FROM tbl_yara WHERE (rule_name = %s)"
         cur = self.sql_con.cursor()
         cur.execute(sql, (rule_name,))
         row = cur.fetchone()
@@ -131,7 +132,7 @@ class MalShare(object):
             return False
 
         try:
-            filetype = str(magic.from_buffer(fdata)).split(' ')[0]
+            filetype = str(magic.from_buffer(fdata)).split(" ")[0]
         except Exception as e:
             print(f"[Magic Exception] {e}")
             filetype = ""
@@ -141,16 +142,16 @@ class MalShare(object):
             return
 
         print("  [M - Upload Handler] Starting Yara Scan")
-        detects = {'yara': []}
+        detects = {"yara": []}
         for ySet in self.yara_rules:
             try:
                 matches = self.yara_rules[ySet].match(data=fdata, timeout=30)
                 for x in matches:
-                    detects['yara'].append(ySet + "/" + x.rule)
+                    detects["yara"].append(ySet + "/" + x.rule)
             except Exception as e:
                 print("  [Submit] Exception Scanning {ySet} - {e}")
 
-        print("  [Submit] Update with file type %s with [%s]" % (filetype, ",".join(detects['yara'])))
+        print("  [Submit] Update with file type %s with [%s]" % (filetype, ",".join(detects["yara"])))
         rid = self.db_update(r_id, r_ssdeep, filetype, detects)
         # if rid is not None:
         #     Unpacker(url_dl, rid)
