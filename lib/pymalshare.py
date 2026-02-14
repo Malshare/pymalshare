@@ -1,43 +1,38 @@
 #!/usr/bin/env python3
 
-import os
-import yara
 import json
+import os
+
+import magic
 import pymysql
-
-import hashlib
-import ssdeep # apt install ssdeep build-essential libffi-dev libfuzzy-dev && pip install ssdeep
-import magic 
-
+import ssdeep  # apt install ssdeep build-essential libffi-dev libfuzzy-dev && pip install ssdeep
+import yara
 
 from lib.storage import Storage
-#from lib.unpacker import Unpacker
-
-
 
 
 class MalShare(object):
     def __init__(self):
-        self.YRULES = self.yara_setup()
+        self.yara_rules = self.yara_setup()
         self.sql_con = self.db_start()
         self.sample_partner_id = None
         self.storage = Storage()
 
-    def db_start(self):
+    @staticmethod
+    def db_start():
         try:
             malshare_db_host = os.getenv("MALSHARE_DB_HOST")
             malshare_db = os.getenv("MALSHARE_DB_DATABASE")
             print(f"[MYSQL] Connecting to {malshare_db_host}/{malshare_db}")
             sql_con = pymysql.connect(
-                host=malshare_db_host, 
-                user=os.getenv("MALSHARE_DB_USER"), 
-                password=os.getenv("MALSHARE_DB_PASS"), 
+                host=malshare_db_host,
+                user=os.getenv("MALSHARE_DB_USER"),
+                password=os.getenv("MALSHARE_DB_PASS"),
                 db=malshare_db)
             sql_con.autocommit(True)
             return sql_con
         except Exception as e:
             print(f"[MYSQL] Error: {e}")
-
 
     def db_ping(self):
         if self.sql_con is None:
@@ -86,7 +81,6 @@ class MalShare(object):
         self.db_submit_yara(r_id, r_yara.get('yara', []))
         return r_id
 
-
     def db_submit_yara(self, sample_id, yara_rule_names):
         for rule_name in yara_rule_names:
             yara_id = self.db_ensure_yara_rule_name(rule_name)
@@ -112,30 +106,27 @@ class MalShare(object):
         else:
             return row[0]
 
-
-    ###############3
-    def yara_setup(self):
-        trules = {}
-        RULE_CONFIG = {
-            "CuckooSandbox"   : "./Yaggy/rules/CuckooSandbox",
-            "YRP"             : "./Yaggy/rules/YRP",
-            "FlorianRoth"     : "./Yaggy/rules/FlorianRoth",
-            "KevTheHermit"    : "./Yaggy/rules/KevTheHermit",
-            "BAMFDetect"      : "./Yaggy/rules/BamfDetect",
+    @staticmethod
+    def yara_setup():
+        ret = {}
+        rule_config = {
+            "CuckooSandbox": "./Yaggy/rules/CuckooSandbox",
+            "YRP": "./Yaggy/rules/YRP",
+            "FlorianRoth": "./Yaggy/rules/FlorianRoth",
+            "KevTheHermit": "./Yaggy/rules/KevTheHermit",
+            "BAMFDetect": "./Yaggy/rules/BamfDetect",
         }
-        for rKey in RULE_CONFIG.keys():
+        for key in rule_config.keys():
             try:
-                trules[rKey] = yara.compile(RULE_CONFIG[rKey])
+                ret[key] = yara.compile(rule_config[key])
             except Exception as e:
                 print(f"[YARA] Error: {e}")
-        return trules
-
-
+        return ret
 
     def process_upload(self, r_id, sha256):
         _, fdata = self.storage.get_sampleobj(f"{sha256[0:3]}/{sha256[3:6]}/{sha256[6:9]}/{sha256}")
 
-        if _ == False:
+        if not _:
             print(f"[process_upload] Unable to download sample {sha256}")
             return False
 
@@ -151,18 +142,17 @@ class MalShare(object):
 
         print("  [M - Upload Handler] Starting Yara Scan")
         detects = {'yara': []}
-        for ySet in self.YRULES:
+        for ySet in self.yara_rules:
             try:
-                matches = self.YRULES[ySet].match(data=fdata, timeout=30)
+                matches = self.yara_rules[ySet].match(data=fdata, timeout=30)
                 for x in matches:
                     detects['yara'].append(ySet + "/" + x.rule)
             except Exception as e:
                 print("  [Submit] Exception Scanning {ySet} - {e}")
 
-        print("  [Submit] Update with file type %s with [%s]" % (filetype,  ",".join(detects['yara'])))
+        print("  [Submit] Update with file type %s with [%s]" % (filetype, ",".join(detects['yara'])))
         rid = self.db_update(r_id, r_ssdeep, filetype, detects)
         # if rid is not None:
         #     Unpacker(url_dl, rid)
 
         return
-

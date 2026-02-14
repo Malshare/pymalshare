@@ -1,0 +1,6 @@
+boto3
+python-dotenv
+pymysql
+python-magic
+ssdeep
+yara-python

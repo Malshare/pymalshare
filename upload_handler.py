@@ -1,16 +1,15 @@
 #!/usr/bin/python
-#Author: Silas
-
-
+# Author: Silas
 import time
+
+from dotenv import load_dotenv
+
 import lib.pymalshare as MalShare
 
-# Load vars from .env file
-from dotenv import load_dotenv
 load_dotenv()
 
 
-def ParseNewFiles():
+def parse_new_file():
     ms = MalShare.MalShare()
     pending = ms.get_pending()
     missing = 0
@@ -32,7 +31,7 @@ def ParseNewFiles():
 def main():
     while True:
         try:
-            ParseNewFiles()
+            parse_new_file()
             time.sleep(10)
         except Exception as e:
             print(f"-- top main Error: {e}")
@@ -40,4 +39,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # ParseNewFiles()
+    # parse_new_file()
