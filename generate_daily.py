@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import hashlib
 import os
+import shutil
 from datetime import datetime, timedelta
 
 from lib.db import MalshareDB
@@ -16,6 +17,7 @@ def main():
     now = datetime.now()
     last_midnight = datetime(year=now.year, month=now.month, day=now.day)
     db = MalshareDB()
+    all_path = md5_path = sha1_path = sha256_path = None
     try:
         current_date = db.first_date()
         while current_date < last_midnight:
@@ -69,6 +71,11 @@ def main():
 
     finally:
         db.close()
+        if all_path:
+            shutil.copy(all_path, os.path.join(OUTPUT_DIR, "malshare.current.all.txt"))
+            shutil.copy(sha256_path, os.path.join(OUTPUT_DIR, "malshare.current.sha256.txt"))
+            shutil.copy(sha1_path, os.path.join(OUTPUT_DIR, "malshare.current.sha1.txt"))
+            shutil.copy(md5_path, os.path.join(OUTPUT_DIR, "malshare.current.txt"))
 
 
 if __name__ == '__main__':
