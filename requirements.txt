@@ -4,3 +4,4 @@ pymysql
 python-magic
 ssdeep
 yara-python
+mariadb
