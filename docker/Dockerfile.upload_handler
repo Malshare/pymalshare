@@ -4,7 +4,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libmagic1 yara libyara-dev ssdeep build-essential libffi-dev libfuzzy-dev \
     && rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir ssdeep pymysql yara-python python-magic boto3
+RUN pip install --no-cache-dir setuptools && \
+    pip install --no-cache-dir ssdeep pymysql yara-python python-magic boto3
 COPY lib /app/lib
 COPY upload_handler.py /app/
 # Yaggy rules must be mounted at /app/Yaggy at runtime
