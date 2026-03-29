@@ -2,7 +2,7 @@ FROM python:3.13-bookworm
 
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python-magic yara libyara-dev ssdeep build-essential libffi-dev libfuzzy-dev \
+        libmagic1 yara libyara-dev ssdeep build-essential libffi-dev libfuzzy-dev \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir ssdeep pymysql yara-python python-magic boto3
 COPY lib /app/lib
