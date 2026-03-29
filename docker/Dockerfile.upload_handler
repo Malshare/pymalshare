@@ -1,10 +1,12 @@
 FROM python:3.10-buster
 
 WORKDIR /app
-RUN apt update && apt install python-magic yara libyara-dev ssdeep build-essential libffi-dev libfuzzy-dev -y
-RUN pip install ssdeep pymysql yara-python python-magic boto3 python-dotenv
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python-magic yara libyara-dev ssdeep build-essential libffi-dev libfuzzy-dev \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir ssdeep pymysql yara-python python-magic boto3
 COPY lib /app/lib
-COPY Yaggy /app/Yaggy
 COPY upload_handler.py /app/
-COPY .env /app/
-CMD python3 -u upload_handler.py
+# Yaggy rules must be mounted at /app/Yaggy at runtime
+# Environment variables provided via env_file in docker-compose
+CMD ["python3", "-u", "upload_handler.py"]

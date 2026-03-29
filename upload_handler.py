@@ -2,11 +2,7 @@
 # Author: Silas
 import time
 
-from dotenv import load_dotenv
-
 import lib.pymalshare as MalShare
-
-load_dotenv()
 
 
 def parse_new_file():

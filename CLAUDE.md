@@ -62,7 +62,7 @@ Long-running daemon that processes pending malware samples:
 Loaded from `/Yaggy/rules/` with 5 hardcoded rule sets in `lib/pymalshare.py`:
 - CuckooSandbox, YRP, FlorianRoth, KevTheHermit, BamfDetect
 
-The `Yaggy` directory must be available at build time for the upload_handler container.
+The `Yaggy` repo is separate from pymalshare. It must be mounted as a volume at `/app/Yaggy` when running the upload_handler container — it is NOT copied into the image at build time.
 
 ## Building
 
@@ -82,7 +82,13 @@ The `generate-daily` service runs in the conf repo's `docker-compose.yml` alongs
 
 The upload_handler runs as a separate daemonized container (`docker run -d`).
 
-Both images should eventually be built and pushed to GHCR via CI, following the same pattern as Frontend and Offline (build → push → trigger conf dispatch).
+Both images are built and pushed to GHCR via `.github/workflows/docker.yml`, following the same pattern as Frontend and Offline (build → push → trigger conf dispatch). The two image builds run in parallel; the conf dispatch fires after both succeed.
+
+## Important: No secrets or external repos in Docker images
+
+- **Never `COPY .env`** into a Docker image — secrets must come from `env_file` in docker-compose at runtime
+- **Never `COPY Yaggy`** into the image — Yaggy is a separate repo and must be volume-mounted at runtime
+- Environment variables are passed via docker-compose `env_file`, not baked into images
 
 ## Database
 
