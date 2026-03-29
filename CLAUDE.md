@@ -37,6 +37,7 @@ Generates daily hash export files for public/partner consumption:
 - Copies the most recent day's files to the output root as `malshare.current.*`
 - Skips dates that already have all 4 files (idempotent)
 - Output dir set via `OUTPUT_DIR` env var
+- In production, output goes to the `daily_exports` Docker volume, which is mounted read-only into the frontend container at `/var/www/html/daily/` and served as browsable directory listings at `/daily/`
 
 ### upload_handler.py
 Long-running daemon that processes pending malware samples:
