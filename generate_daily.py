@@ -35,7 +35,7 @@ def main():
             sha1_path = os.path.join(date_path, sha1_file_name)
             sha256_path = os.path.join(date_path, sha256_file_name)
             if all(os.path.exists(p) for p in [all_path, md5_path, sha1_path, sha256_path]):
-                return
+                continue
 
             all_h = hashlib.sha256()
             md5_h = hashlib.sha256()
@@ -61,6 +61,10 @@ def main():
                 ):
                     h.update(line.encode("utf-8"))
                     fp.write(line)
+
+            for fp in (all_fp, md5_fp, sha1_fp, sha256_fp):
+                if fp is not None:
+                    fp.close()
 
             if all_fp is not None:
                 with open(os.path.join(date_path, "hashes.txt"), "w") as fp:
