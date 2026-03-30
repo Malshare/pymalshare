@@ -4,10 +4,10 @@ Python backend for MalShare — handles sample processing and export generation 
 
 ## Tech Stack
 
-- Python 3.14 (generate_daily) / 3.10 (upload_handler)
+- Python 3.14 (generate_daily) / 3.13 (upload_handler)
 - MariaDB (`mariadb` package) for generate_daily, `pymysql` for upload_handler
 - boto3 for S3/Wasabi storage
-- yara-python, python-magic, ssdeep for sample analysis
+- python-magic, ssdeep for sample analysis
 - Black (120 char lines) + isort for formatting
 
 ## Project Structure
@@ -43,7 +43,6 @@ Generates daily hash export files for public/partner consumption:
 Long-running daemon that processes pending malware samples:
 - Polls DB every 10 seconds for pending samples
 - Downloads binary from S3, detects file type (libmagic), computes ssdeep hash
-- Runs YARA rules (5 rulesets from `/Yaggy/rules/`, 30s timeout each)
 - Updates DB with results and marks sample as processed
 
 ## Environment Variables
@@ -57,13 +56,6 @@ Long-running daemon that processes pending malware samples:
 
 ### Output (generate_daily only)
 - `OUTPUT_DIR` — directory for generated hash lists
-
-## YARA Rules
-
-Loaded from `/Yaggy/rules/` with 5 hardcoded rule sets in `lib/pymalshare.py`:
-- CuckooSandbox, YRP, FlorianRoth, KevTheHermit, BamfDetect
-
-The `Yaggy` repo is separate from pymalshare. It must be mounted as a volume at `/app/Yaggy` when running the upload_handler container — it is NOT copied into the image at build time.
 
 ## Building
 
@@ -85,10 +77,9 @@ The upload_handler runs as a separate daemonized container (`docker run -d`).
 
 Both images are built and pushed to GHCR via `.github/workflows/docker.yml`, following the same pattern as Frontend and Offline (build → push → trigger conf dispatch). The two image builds run in parallel; the conf dispatch fires after both succeed.
 
-## Important: No secrets or external repos in Docker images
+## Important: No secrets in Docker images
 
 - **Never `COPY .env`** into a Docker image — secrets must come from `env_file` in docker-compose at runtime
-- **Never `COPY Yaggy`** into the image — Yaggy is a separate repo and must be volume-mounted at runtime
 - Environment variables are passed via docker-compose `env_file`, not baked into images
 
 ## Database
@@ -97,9 +88,7 @@ Queries `malshare_db.tbl_samples` primarily:
 - `md5`, `sha1`, `sha256` — sample hashes
 - `added` — Unix timestamp, used for date range queries in generate_daily
 - `pending` — flag for upload_handler to pick up unprocessed samples
-- `ssdeep`, `ftype`, `yara` — populated by upload_handler after processing
-
-Also uses `tbl_yara` (rule catalog) and `tbl_matches` (sample-to-rule mapping).
+- `ssdeep`, `ftype` — populated by upload_handler after processing
 
 ## Known Issues / Notes
 
