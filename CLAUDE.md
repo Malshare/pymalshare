@@ -18,10 +18,10 @@ upload_handler.py              # Long-running daemon for sample processing
 lib/
   db.py                        # MariaDB database layer (queries tbl_samples)
   storage.py                   # S3/Wasabi abstraction (boto3)
-  pymalshare.py                # Core class: YARA setup, sample processing, DB updates
+  pymalshare.py                # Core class: sample processing, DB updates
 docker/
   Docker.generate_daily        # Container for daily export (lightweight, mariadb only)
-  Dockerfile.upload_handler    # Container for upload handler (heavier, yara/ssdeep/magic)
+  Dockerfile.upload_handler    # Container for upload handler (ssdeep/magic)
 Makefile                       # Build and run shortcuts
 requirements.txt               # All Python dependencies
 pyproject.toml                 # Black/isort config
@@ -73,7 +73,7 @@ The Makefile uses `--env-file .env` for credentials. Create a `.env` file with t
 
 The `generate-daily` service runs in the conf repo's `docker-compose.yml` alongside the frontend. It uses a sleep loop to run once daily. The output is stored in a `daily_exports` Docker named volume.
 
-The upload_handler runs as a separate daemonized container (`docker run -d`).
+The `upload-handler` service also runs in the conf repo's `docker-compose.yml` alongside the frontend.
 
 Both images are built and pushed to GHCR via `.github/workflows/docker.yml`, following the same pattern as Frontend and Offline (build → push → trigger conf dispatch). The two image builds run in parallel; the conf dispatch fires after both succeed.
 
