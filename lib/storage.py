@@ -28,3 +28,6 @@ class Storage(object):
             print(e)
 
         return False, b""
+
+    def put_sampleobj(self, key, data):
+        self.s3.put_object(Bucket=self.bucket, Key=key, Body=data)

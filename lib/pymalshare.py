@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import hashlib
 import os
 
 import magic
@@ -76,6 +77,56 @@ class MalShare(object):
         sql_cur = self.sql_con.cursor()
         sql_cur.execute(insert_sql, (r_ssdeep, r_type, r_id))
         return r_id
+
+    @staticmethod
+    def _sample_key(sha256):
+        return f"{sha256[0:3]}/{sha256[3:6]}/{sha256[6:9]}/{sha256}"
+
+    def submit_buffer(self, data, source_url):
+        filetype = str(magic.from_buffer(data)).split(" ")[0]
+        if filetype == "empty":
+            print("[submit_buffer] Skipping empty file")
+            return None
+
+        r_md5 = hashlib.md5(data).hexdigest()
+        r_sha1 = hashlib.sha1(data).hexdigest()
+        r_sha256 = hashlib.sha256(data).hexdigest()
+        r_ssdeep = ssdeep.hash(data)
+        s3_key = self._sample_key(r_sha256)
+
+        sql_cur = self.sql_con.cursor()
+
+        # Check if sample already exists
+        sql_cur.execute("SELECT id FROM tbl_samples WHERE sha256 = %s LIMIT 1", (r_sha256,))
+        existing = sql_cur.fetchone()
+
+        if existing:
+            sample_id = existing[0]
+            print(f"[submit_buffer] Existing sample {r_sha256} (id={sample_id})")
+        else:
+            # Upload to S3 and insert new sample
+            self.storage.put_sampleobj(s3_key, data)
+            sql_cur.execute(
+                "INSERT INTO tbl_samples (md5, sha1, sha256, added, counter, pending, ftype) "
+                "VALUES (%s, %s, %s, UNIX_TIMESTAMP(), 0, 1, %s)",
+                (r_md5, r_sha1, r_sha256, filetype),
+            )
+            sample_id = sql_cur.lastrowid
+            print(f"[submit_buffer] New sample {r_sha256} (id={sample_id})")
+
+        # Add source URL if not already recorded
+        if source_url:
+            sql_cur.execute(
+                "SELECT id FROM tbl_sample_sources WHERE id = %s AND source = %s LIMIT 1",
+                (sample_id, source_url),
+            )
+            if not sql_cur.fetchone():
+                sql_cur.execute(
+                    "INSERT INTO tbl_sample_sources (id, source, added) VALUES (%s, %s, UNIX_TIMESTAMP())",
+                    (sample_id, source_url),
+                )
+
+        return sample_id
 
     def process_upload(self, r_id, sha256):
         _, fdata = self.storage.get_sampleobj(f"{sha256[0:3]}/{sha256[3:6]}/{sha256[6:9]}/{sha256}")
