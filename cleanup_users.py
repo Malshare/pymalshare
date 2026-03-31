@@ -17,7 +17,7 @@ def main():
             (cutoff,),
         )
         db._conn.commit()
-        print(f"[CLEANUP] Cleared r_ip_address for {cur.rowcount} inactive users")
+        print(f"[CLEANUP] Cleared data for {cur.rowcount} inactive users")
     finally:
         db.close()
 
