@@ -58,7 +58,7 @@ class MalShare(object):
         sql_query = """
             SELECT id, url, created_at, started_at, finished_at, fetchall 
             FROM tbl_url_download_tasks
-            WHERE started_at = '1970-01-01 01:00:01'
+            WHERE started_at = '1970-01-01 00:00:01'
         """
 
         sql_cur = self.sql_con.cursor()
