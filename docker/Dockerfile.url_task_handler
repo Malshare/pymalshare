@@ -1,12 +1,8 @@
-FROM python:3.13-bookworm
+FROM ghcr.io/malshare/pymalshare-base:latest
 
-WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        libmagic1 ssdeep build-essential libffi-dev libfuzzy-dev tor \
+RUN apt-get update && apt-get install -y --no-install-recommends tor \
     && rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir "setuptools<81" six cffi && \
-    pip install --no-cache-dir --no-build-isolation ssdeep && \
-    pip install --no-cache-dir pymysql python-magic boto3 "requests[socks]"
+RUN pip install --no-cache-dir "requests[socks]"
 COPY lib /app/lib
 COPY url_task_handler.py /app/
 COPY docker/entrypoint-url-task-handler.sh /app/
