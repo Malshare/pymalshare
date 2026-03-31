@@ -13,12 +13,10 @@ TIMEOUT = 30
 MAX_SIZE = 40_000_000
 
 
-def process_tasks():
-    ms = MalShare.MalShare()
+def process_task(ms):
     task = ms.get_url_pending()
 
     if task is None:
-        ms.db_close()
         time.sleep(20)
         return
 
@@ -31,7 +29,6 @@ def process_tasks():
     if "malshare" in t_url:
         print(f"[url_task] Skipping self-referential URL: {t_url}")
         ms.db_url_update(t_id, "finished_at", now)
-        ms.db_close()
         return
 
     try:
@@ -48,17 +45,21 @@ def process_tasks():
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ms.db_url_update(t_id, "finished_at", now)
-    ms.db_close()
 
 
 def main():
+    ms = MalShare.MalShare()
     while True:
         try:
-            process_tasks()
+            process_task(ms)
             time.sleep(5)
         except Exception as e:
-            print(f"[url_task] Top-level error: {e}")
+            print(f"[url_task] Error: {e}")
             time.sleep(10)
+            try:
+                ms = MalShare.MalShare()
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":
