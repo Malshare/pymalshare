@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os
+import time
 from datetime import datetime
 
 import mariadb
@@ -42,3 +43,54 @@ class MalshareDB:
         row = sql_cur.fetchone()
 
         return datetime.fromtimestamp(row[0])
+
+    def cleanup_inactive_users(self, cutoff_ts):
+        cur = self._conn.cursor()
+        cur.execute(
+            "UPDATE tbl_users SET last_login_ip_address = '' WHERE last_login IS NOT NULL AND last_login < ? AND last_login_ip_address != ''",
+            (cutoff_ts,),
+        )
+        self._conn.commit()
+        return cur.rowcount
+
+    def rollup_api_calls_to_daily(self, cutoff_ts):
+        cur = self._conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO tbl_api_calls_daily (day, endpoint, user_id, call_count)
+            SELECT DATE(FROM_UNIXTIME(ts)), endpoint, user_id, COUNT(*)
+            FROM tbl_api_calls
+            WHERE ts < ?
+            GROUP BY DATE(FROM_UNIXTIME(ts)), endpoint, user_id
+            ON DUPLICATE KEY UPDATE call_count = call_count + VALUES(call_count)
+            """,
+            (cutoff_ts,),
+        )
+        aggregated = cur.rowcount
+        cur.execute("DELETE FROM tbl_api_calls WHERE ts < ?", (cutoff_ts,))
+        deleted = cur.rowcount
+        self._conn.commit()
+        return deleted, aggregated
+
+    def collapse_old_daily_api_calls(self, cutoff_ts):
+        cur = self._conn.cursor()
+        cutoff_date = time.strftime("%Y-%m-%d", time.gmtime(cutoff_ts))
+        cur.execute(
+            """
+            INSERT INTO tbl_api_calls_daily (day, endpoint, user_id, call_count)
+            SELECT day, endpoint, NULL, SUM(call_count)
+            FROM tbl_api_calls_daily
+            WHERE day < ? AND user_id IS NOT NULL
+            GROUP BY day, endpoint
+            ON DUPLICATE KEY UPDATE call_count = call_count + VALUES(call_count)
+            """,
+            (cutoff_date,),
+        )
+        aggregated = cur.rowcount
+        cur.execute(
+            "DELETE FROM tbl_api_calls_daily WHERE day < ? AND user_id IS NOT NULL",
+            (cutoff_date,),
+        )
+        deleted = cur.rowcount
+        self._conn.commit()
+        return deleted, aggregated

@@ -11,13 +11,8 @@ def main():
     db = MalshareDB()
     try:
         cutoff = int(time.time()) - NINETY_DAYS
-        cur = db._conn.cursor()
-        cur.execute(
-            "UPDATE tbl_users SET last_login_ip_address = '' WHERE last_login IS NOT NULL AND last_login < ? AND last_login_ip_address != ''",
-            (cutoff,),
-        )
-        db._conn.commit()
-        print(f"[CLEANUP] Cleared data for {cur.rowcount} inactive users")
+        count = db.cleanup_inactive_users(cutoff)
+        print(f"[CLEANUP] Cleared data for {count} inactive users")
     finally:
         db.close()
 
