@@ -14,14 +14,23 @@ Python backend for MalShare — handles sample processing and export generation 
 
 ```
 generate_daily.py              # Daily hash export generator (run-once job)
+rollup_api_calls.py            # Two-tier API call aggregation (run-once job)
+refresh_stats.py               # Precompute expensive sample stats into tbl_stats_cache (run-once job)
+cleanup_users.py               # Clear IP addresses for inactive users (run-once job)
 upload_handler.py              # Long-running daemon for sample processing
+url_task_handler.py            # Long-running daemon for URL downloads via Tor
 lib/
-  db.py                        # MariaDB database layer (queries tbl_samples)
+  db.py                        # MariaDB database layer (queries tbl_samples, rollups, stats cache)
   storage.py                   # S3/Wasabi abstraction (boto3)
   pymalshare.py                # Core class: sample processing, DB updates
 docker/
   Docker.generate_daily        # Container for daily export (lightweight, mariadb only)
+  Dockerfile.rollup_api_calls  # Container for API call rollup
+  Dockerfile.refresh_stats     # Container for stats cache refresh
+  Dockerfile.cleanup_users     # Container for user IP cleanup
   Dockerfile.upload_handler    # Container for upload handler (ssdeep/magic)
+  Dockerfile.url_task_handler  # Container for URL task handler (Tor)
+  Dockerfile.base              # Shared base image for handlers
 Makefile                       # Build and run shortcuts
 requirements.txt               # All Python dependencies
 pyproject.toml                 # Black/isort config
@@ -38,6 +47,26 @@ Generates daily hash export files for public/partner consumption:
 - Skips dates that already have all 4 files (idempotent)
 - Output dir set via `OUTPUT_DIR` env var
 - In production, output goes to the `daily_exports` Docker volume, which is mounted read-only into the frontend container at `/var/www/html/daily/` and served as browsable directory listings at `/daily/`
+
+### rollup_api_calls.py
+Aggregates old `tbl_api_calls` rows into `tbl_api_calls_daily`:
+- Tier 1 (30+ days old): individual rows → per-user, per-endpoint, per-day summaries
+- Tier 2 (365+ days old): per-user summaries → endpoint-only totals (user_id = NULL)
+- Deletes aggregated rows from the source table after rollup
+- Run daily via Docker sleep loop
+
+### refresh_stats.py
+Precomputes expensive sample statistics into `tbl_stats_cache`:
+- Runs the slow `COUNT(*)`, `GROUP BY YEAR(...)`, `GROUP BY ftype` queries on `tbl_samples` in the background
+- Also computes all-time API call total (`COUNT(*)` on `tbl_api_calls` + `SUM` on `tbl_api_calls_daily`)
+- Writes results as key-value pairs via `INSERT ... ON DUPLICATE KEY UPDATE`
+- Cached keys: `total_samples`, `earliest_upload`, `latest_upload`, `uploads_by_year` (JSON), `file_type_breakdown` (JSON), `api_calls_all_time`
+- The Frontend's `stats.php` and `admin.php` read from this table instead of running full table scans
+- Run hourly via Docker sleep loop (3600s)
+- **When adding new expensive queries to the stats page, add them here instead of running on page load**
+
+### cleanup_users.py
+Clears IP address history for users inactive 90+ days. Run daily via Docker sleep loop.
 
 ### upload_handler.py
 Long-running daemon that processes pending malware samples:
@@ -71,11 +100,11 @@ The Makefile uses `--env-file .env` for credentials. Create a `.env` file with t
 
 ## Deployment
 
-The `generate-daily` service runs in the conf repo's `docker-compose.yml` alongside the frontend. It uses a sleep loop to run once daily. The output is stored in a `daily_exports` Docker named volume.
+All services run in the conf repo's `docker-compose.yml` alongside the frontend:
+- `generate-daily`, `rollup-api-calls`, `refresh-stats`, `cleanup-users` — run-once jobs with sleep loops (daily or hourly)
+- `upload-handler`, `url-task-handler` — long-running daemons with polling loops
 
-The `upload-handler` service also runs in the conf repo's `docker-compose.yml` alongside the frontend.
-
-Both images are built and pushed to GHCR via `.github/workflows/docker.yml`, following the same pattern as Frontend and Offline (build → push → trigger conf dispatch). The two image builds run in parallel; the conf dispatch fires after both succeed.
+All images are built and pushed to GHCR via `.github/workflows/docker.yml` (build → push → trigger conf dispatch). Independent builds run in parallel; the conf dispatch fires after all succeed.
 
 ## Important: No secrets in Docker images
 
