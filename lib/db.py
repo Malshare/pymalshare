@@ -135,6 +135,13 @@ class MalshareDB:
         types['Other'] = total - counted
         stats['file_type_breakdown'] = json.dumps(types)
 
+        # All-time API calls (COUNT on tbl_api_calls + SUM on tbl_api_calls_daily)
+        cur.execute(
+            "SELECT (SELECT COUNT(*) FROM tbl_api_calls) "
+            "+ (SELECT COALESCE(SUM(call_count), 0) FROM tbl_api_calls_daily)"
+        )
+        stats['api_calls_all_time'] = str(cur.fetchone()[0])
+
         for name, value in stats.items():
             cur.execute(
                 "INSERT INTO tbl_stats_cache (name, value, updated_at) VALUES (?, ?, ?) "
