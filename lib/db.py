@@ -142,6 +142,10 @@ class MalshareDB:
         )
         stats['api_calls_all_time'] = str(cur.fetchone()[0])
 
+        # Total bytes stored (SUM ignores NULL = un-backfilled rows)
+        cur.execute("SELECT COALESCE(SUM(size), 0) FROM tbl_samples")
+        stats['total_bytes'] = str(cur.fetchone()[0])
+
         for name, value in stats.items():
             cur.execute(
                 "INSERT INTO tbl_stats_cache (name, value, updated_at) VALUES (?, ?, ?) "
