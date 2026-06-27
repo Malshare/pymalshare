@@ -71,11 +71,11 @@ class MalShare(object):
         sql_cur.execute(sql_query, (rhash,))
         return sql_cur.fetchone()[0]
 
-    def db_update(self, r_id, r_ssdeep, r_type):
+    def db_update(self, r_id, r_ssdeep, r_type, r_size):
         print("  [Mark Processed]")
-        insert_sql = """UPDATE tbl_samples set ssdeep = %s, ftype = %s, pending=0 WHERE id = %s"""
+        insert_sql = """UPDATE tbl_samples set ssdeep = %s, ftype = %s, size = %s, pending=0 WHERE id = %s"""
         sql_cur = self.sql_con.cursor()
-        sql_cur.execute(insert_sql, (r_ssdeep, r_type, r_id))
+        sql_cur.execute(insert_sql, (r_ssdeep, r_type, r_size, r_id))
         return r_id
 
     @staticmethod
@@ -145,7 +145,8 @@ class MalShare(object):
         if "empty" == filetype:
             return
 
+        r_size = len(fdata)
         print(f"  [Submit] Update with file type {filetype}")
-        self.db_update(r_id, r_ssdeep, filetype)
+        self.db_update(r_id, r_ssdeep, filetype, r_size)
 
         return
