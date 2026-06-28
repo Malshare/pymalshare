@@ -17,6 +17,7 @@ generate_daily.py              # Daily hash export generator (run-once job)
 rollup_api_calls.py            # Two-tier API call aggregation (run-once job)
 refresh_stats.py               # Precompute expensive sample stats into tbl_stats_cache (run-once job)
 cleanup_users.py               # Clear IP addresses for inactive users (run-once job)
+backfill_sizes.py              # One-time: backfill tbl_samples.size from Wasabi (run via `docker compose run`)
 upload_handler.py              # Long-running daemon for sample processing
 url_task_handler.py            # Long-running daemon for URL downloads via Tor
 lib/
@@ -28,6 +29,7 @@ docker/
   Dockerfile.rollup_api_calls  # Container for API call rollup
   Dockerfile.refresh_stats     # Container for stats cache refresh
   Dockerfile.cleanup_users     # Container for user IP cleanup
+  Dockerfile.backfill_sizes    # One-time size backfill (python:3.14 + mariadb + boto3)
   Dockerfile.upload_handler    # Container for upload handler (ssdeep/magic)
   Dockerfile.url_task_handler  # Container for URL task handler (Tor)
   Dockerfile.base              # Shared base image for handlers
