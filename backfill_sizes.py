@@ -62,9 +62,15 @@ def main():
     if pending:
         total_updated += _flush(cur, conn, pending)
 
+    cur.execute("SELECT COUNT(*) FROM tbl_samples WHERE size IS NULL")
+    remaining_null = cur.fetchone()[0]
+
     cur.close()
     db.close()
-    print(f"Done. objects seen={total_seen}, rows updated={total_updated}")
+    print(
+        f"Done. objects seen={total_seen}, rows updated={total_updated}, "
+        f"rows still NULL={remaining_null}"
+    )
 
 
 if __name__ == "__main__":
